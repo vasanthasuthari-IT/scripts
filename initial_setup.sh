@@ -35,7 +35,6 @@ sudo dnf install -y \
     git \
     unzip \
     tree \
-    htop \
     net-tools \
     bind-utils \
     telnet \
