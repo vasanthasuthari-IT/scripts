@@ -19,8 +19,8 @@ echo "========================================"
 # Java 17
 # -----------------------------------------------------------------------------
 echo ""
-echo "[1/6] Installing Java 17..."
-sudo dnf install -y java-17-openjdk
+echo "[1/6] Installing Java 21..."
+sudo dnf install -y java-21-openjdk
 
 # -----------------------------------------------------------------------------
 # Rundeck repo

@@ -32,7 +32,6 @@ sudo dnf install -y \
     wget \
     curl \
     vim \
-    git \
     unzip \
     tree \
     net-tools \
