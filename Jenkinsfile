@@ -55,7 +55,7 @@ pipeline {
                                         -o StrictHostKeyChecking=no \\
                                         -o ConnectTimeout=15 \\
                                         ${SSH_USER}@${host} \\
-                                        'sudo bash -s' < scripts/initial_setup.sh
+                                        'sudo bash -s' < initial_setup.sh
                                 """
                             }
                         }
