@@ -19,8 +19,16 @@ echo "========================================"
 # Java 17
 # -----------------------------------------------------------------------------
 echo ""
-echo "[1/6] Installing Java 21..."
-sudo dnf install -y java-21-openjdk
+echo "[1/6] Installing Amazon Corretto 17 (Rundeck requires Java 11 or 17)..."
+sudo rpm --import https://yum.corretto.aws/corretto.key
+sudo curl -Lo /etc/yum.repos.d/corretto.repo https://yum.corretto.aws/corretto.repo
+sudo dnf install -y java-17-amazon-corretto-devel
+
+JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
+export JAVA_HOME
+sudo bash -c "echo 'JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto' >> /etc/environment"
+sudo alternatives --set java /usr/lib/jvm/java-17-amazon-corretto/bin/java 2>/dev/null || true
+echo "    JAVA_HOME set to: ${JAVA_HOME}"
 
 # -----------------------------------------------------------------------------
 # Rundeck repo
