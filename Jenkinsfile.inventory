@@ -40,11 +40,11 @@ pipeline {
             }
         }
 
-        stage('Inventory Detail') {
-            steps {
-                sh 'ansible-inventory -i inventory/aws_ec2.yml --list | python3 tools/show_inventory.py'
-            }
-        }
+        // stage('Inventory Detail') {
+        //     steps {
+        //         sh 'ansible-inventory -i inventory/aws_ec2.yml --list | python3 tools/show_inventory.py'
+        //     }
+        // }
 
     }
 
