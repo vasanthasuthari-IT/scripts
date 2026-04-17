@@ -14,7 +14,7 @@ pipeline {
         )
         choice(
             name: 'SCRIPT',
-            choices: ['initial_setup.sh', 'install_rundeck.sh'],
+            choices: ['initial_setup.sh', 'install_rundeck.sh', 'host_info.py'],
             description: 'Script to run on the target VMs'
         )
     }
@@ -55,6 +55,8 @@ pipeline {
 
                         def parallelSteps = [:]
 
+                        def isPython = params.SCRIPT.endsWith('.py')
+
                         ips.each { ip ->
                             def host = ip
                             parallelSteps["${params.VM_NAME} @ ${host}"] = {
@@ -64,7 +66,7 @@ pipeline {
                                         -o StrictHostKeyChecking=no \\
                                         -o ConnectTimeout=15 \\
                                         ${SSH_USER}@${host} \\
-                                        'sudo bash -s' < ${params.SCRIPT}
+                                        '${isPython ? "python3 -" : "sudo bash -s"}' < ${params.SCRIPT}
                                 """
                             }
                         }

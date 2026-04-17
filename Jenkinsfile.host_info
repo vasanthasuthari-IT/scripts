@@ -16,7 +16,9 @@ pipeline {
     environment {
         SSH_USER = 'ec2-user'
         // Add or remove IPs here as VMs change
-        TARGET_IPS = '54.84.56.59,98.88.70.237'   // rundeck1, rundeck2
+        // TARGET_IPS = '54.84.56.59,98.88.70.237'   // rundeck1, rundeck2
+        TARGET_IPS = '3.208.23.43,13.218.174.21'   // sandbox1, sandbox2
+
     }
 
     triggers {
