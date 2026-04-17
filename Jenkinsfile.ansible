@@ -1,20 +1,30 @@
 // =============================================================================
 // Jenkinsfile.ansible
-// Runs an Ansible playbook against a VM group using dynamic EC2 inventory.
+// Runs an Ansible playbook against a VM group or specific IPs.
+//
+// Target modes:
+//   VM_Group only  → uses dynamic EC2 inventory filtered by group
+//   HOST_IPS only  → targets specific IPs directly, bypasses inventory
+//   Both set       → HOST_IPS takes precedence
 // =============================================================================
 
 pipeline {
     agent any
 
     parameters {
-        choice(
-            name: 'VM_GROUP',
-            choices: ['vm_rundeck', 'vm_jenkins', 'vm_sandbox', 'all'],
-            description: 'Target VM group (matches EC2 VM tag)'
+        string(
+            name: 'VM_Group',
+            defaultValue: 'vm_rundeck',
+            description: 'VM group from inventory (e.g. vm_rundeck, vm_jenkins, vm_sandbox, all)'
+        )
+        string(
+            name: 'HOST_IPS',
+            defaultValue: '',
+            description: 'Comma-separated IPs to target directly — overrides VM_Group (e.g. 1.2.3.4,5.6.7.8)'
         )
         choice(
             name: 'PLAYBOOK',
-            choices: ['playbooks/setup.yml', 'playbooks/host_info.yml', 'playbooks/install_rundeck.yml'],
+            choices: ['playbooks/host_info.yml', 'playbooks/setup.yml', 'playbooks/install_rundeck.yml'],
             description: 'Playbook to run'
         )
     }
@@ -54,14 +64,34 @@ pipeline {
                 withCredentials([
                     sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')
                 ]) {
-                    sh """
-                        chmod 400 \$SSH_KEY
-                        ansible-playbook \
-                            -i inventory/aws_ec2.yml \
-                            --private-key \$SSH_KEY \
-                            --limit ${params.VM_GROUP} \
-                            ${params.PLAYBOOK}
-                    """
+                    script {
+                        def inventoryFlag
+                        def limitFlag
+
+                        if (params.HOST_IPS?.trim()) {
+                            // Direct IP mode — comma-separated IPs passed as inline inventory
+                            // Trailing comma required by Ansible for IP-only inventory
+                            def ips = params.HOST_IPS.split(',').collect { it.trim() }.join(',')
+                            inventoryFlag = "-i '${ips},'"
+                            limitFlag    = ""
+                            echo "Target mode : IPs → ${ips}"
+                        } else {
+                            // Group mode — use dynamic EC2 inventory filtered by VM_Group
+                            inventoryFlag = "-i inventory/aws_ec2.yml"
+                            limitFlag    = "--limit ${params.VM_Group}"
+                            echo "Target mode : Group → ${params.VM_Group}"
+                        }
+
+                        sh """
+                            chmod 400 \$SSH_KEY
+                            ansible-playbook \
+                                ${inventoryFlag} \
+                                --private-key \$SSH_KEY \
+                                -u ec2-user \
+                                ${limitFlag} \
+                                ${params.PLAYBOOK}
+                        """
+                    }
                 }
             }
         }
@@ -69,7 +99,7 @@ pipeline {
     }
 
     post {
-        success { echo "Playbook completed on ${params.VM_GROUP}" }
-        failure { echo "Playbook failed on ${params.VM_GROUP} — check logs above" }
+        success { echo "Playbook '${params.PLAYBOOK}' completed successfully" }
+        failure { echo "Playbook '${params.PLAYBOOK}' failed — check logs above" }
     }
 }
