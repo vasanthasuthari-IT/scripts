@@ -12,10 +12,10 @@ pipeline {
             choices: ['vm_rundeck', 'vm_jenkins', 'vm_sandbox', 'all'],
             description: 'Target VM group (matches EC2 VM tag)'
         )
-        string(
+        choice(
             name: 'PLAYBOOK',
-            defaultValue: 'playbooks/setup.yml',
-            description: 'Playbook path relative to repo root'
+            choices: ['playbooks/setup.yml', 'playbooks/host_info.yml', 'playbooks/install_rundeck.yml'],
+            description: 'Playbook to run'
         )
     }
 

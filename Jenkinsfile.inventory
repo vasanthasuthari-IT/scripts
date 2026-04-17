@@ -1,0 +1,84 @@
+// =============================================================================
+// Jenkinsfile.inventory
+// Lists all EC2 instances from dynamic inventory grouped by VM tag.
+// Run this anytime to verify Jenkins can see your instances.
+// =============================================================================
+
+pipeline {
+    agent any
+
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+        ANSIBLE_CONFIG     = 'ansible.cfg'
+    }
+
+    triggers {
+        // Re-check inventory every 30 minutes
+        cron('H/30 * * * *')
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Requirements') {
+            steps {
+                sh '''
+                    pip3 install ansible boto3 botocore --break-system-packages --quiet
+                    ansible-galaxy collection install -r requirements.yml -p ./collections
+                '''
+            }
+        }
+
+        stage('Inventory Tree') {
+            steps {
+                sh 'ansible-inventory -i inventory/aws_ec2.yml --graph'
+            }
+        }
+
+        stage('Inventory Detail') {
+            steps {
+                sh '''
+                    ansible-inventory -i inventory/aws_ec2.yml --list \
+                    | python3 -c "
+import sys, json
+inv = json.load(sys.stdin)
+for group, data in inv.items():
+    if group.startswith(\"vm_\") and isinstance(data, dict):
+        hosts = data.get(\"hosts\", [])
+        if hosts:
+            print(f\"\\n[{group}] — {len(hosts)} instance(s)\")
+            for h in hosts:
+                print(f\"  {h}\")
+"
+                '''
+            }
+        }
+
+        stage('Ping All') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')
+                ]) {
+                    sh '''
+                        chmod 400 $SSH_KEY
+                        ansible all \
+                            -i inventory/aws_ec2.yml \
+                            --private-key $SSH_KEY \
+                            -m ping
+                    '''
+                }
+            }
+        }
+
+    }
+
+    post {
+        success { echo "All instances reachable" }
+        failure { echo "One or more instances unreachable — check logs above" }
+    }
+}
