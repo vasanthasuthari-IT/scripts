@@ -20,9 +20,10 @@ pipeline {
     }
 
     environment {
-        AWS_DEFAULT_REGION = 'us-east-1'
-        AWS_PROFILE        = 'aws-cdk'
-        ANSIBLE_CONFIG     = 'ansible.cfg'
+        AWS_DEFAULT_REGION           = 'us-east-1'
+        ANSIBLE_CONFIG               = 'ansible.cfg'
+        ANSIBLE_SYSTEM_WARNINGS      = '0'
+        ANSIBLE_DEPRECATION_WARNINGS = '0'
     }
 
     stages {
