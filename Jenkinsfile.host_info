@@ -18,7 +18,7 @@ pipeline {
         // Add or remove IPs here as VMs change
         // TARGET_IPS = '54.84.56.59,98.88.70.237'   // rundeck1, rundeck2
         // TARGET_IPS = '52.23.169.210'   // sandbox1
-        TARGET_IPS = '98.80.80.47'    // sandbox2
+        TARGET_IPS = '98.80.80.47,52.23.169.210'    // sandbox2
 
     }
 
