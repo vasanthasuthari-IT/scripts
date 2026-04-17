@@ -46,26 +46,10 @@ pipeline {
             }
         }
 
-        stage('Ping All') {
-            steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')
-                ]) {
-                    sh '''
-                        chmod 400 $SSH_KEY
-                        ansible all \
-                            -i inventory/aws_ec2.yml \
-                            --private-key $SSH_KEY \
-                            -m ping
-                    '''
-                }
-            }
-        }
-
     }
 
     post {
-        success { echo "All instances reachable" }
-        failure { echo "One or more instances unreachable — check logs above" }
+        success { echo "Inventory check complete" }
+        failure { echo "Inventory check failed — check logs above" }
     }
 }
