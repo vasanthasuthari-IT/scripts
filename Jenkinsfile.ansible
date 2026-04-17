@@ -45,10 +45,7 @@ pipeline {
 
         stage('Show Inventory') {
             steps {
-                // AWS credentials come from the EC2 instance role — no static keys needed
-                sh '''
-                    ansible-inventory -i inventory/aws_ec2.yml --graph
-                '''
+                sh 'ansible-inventory -i inventory/aws_ec2.yml --graph'
             }
         }
 
