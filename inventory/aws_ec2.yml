@@ -1,0 +1,41 @@
+# =============================================================================
+# aws_ec2.yml — Ansible dynamic inventory for AWS EC2
+#
+# Queries AWS in real-time — no static file to maintain.
+# Instances appear/disappear automatically as EC2 state changes.
+#
+# Usage:
+#   ansible-inventory -i inventory/aws_ec2.yml --list
+#   ansible-playbook -i inventory/aws_ec2.yml playbooks/setup.yml --limit vm_rundeck
+# =============================================================================
+
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - us-east-1
+
+# Only include running instances
+filters:
+  instance-state-name: running
+
+# Group instances by their VM tag
+# e.g. VM=rundeck  → group: vm_rundeck
+#      VM=jenkins  → group: vm_jenkins
+#      VM=orlando  → group: vm_orlando
+keyed_groups:
+  - key: tags.VM
+    prefix: vm
+    separator: "_"
+
+# Also group by environment tag
+  - key: tags.Environment
+    prefix: env
+    separator: "_"
+
+# Use public IP as the connection host
+hostnames:
+  - public-ip-address
+
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ec2-user'"

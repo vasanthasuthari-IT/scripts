@@ -1,0 +1,77 @@
+// =============================================================================
+// Jenkinsfile.ansible
+// Runs an Ansible playbook against a VM group using dynamic EC2 inventory.
+// =============================================================================
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'VM_GROUP',
+            choices: ['vm_rundeck', 'vm_jenkins', 'vm_sandbox', 'all'],
+            description: 'Target VM group (matches EC2 VM tag)'
+        )
+        string(
+            name: 'PLAYBOOK',
+            defaultValue: 'playbooks/setup.yml',
+            description: 'Playbook path relative to repo root'
+        )
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+        AWS_PROFILE        = 'aws-cdk'
+        ANSIBLE_CONFIG     = 'ansible.cfg'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Requirements') {
+            steps {
+                sh '''
+                    pip3 install ansible boto3 botocore --break-system-packages --quiet
+                    ansible-galaxy collection install -r requirements.yml -p ./collections
+                '''
+            }
+        }
+
+        stage('Show Inventory') {
+            steps {
+                // AWS credentials come from the EC2 instance role — no static keys needed
+                sh '''
+                    ansible-inventory -i inventory/aws_ec2.yml --graph
+                '''
+            }
+        }
+
+        stage('Run Playbook') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')
+                ]) {
+                    sh """
+                        chmod 400 \$SSH_KEY
+                        ansible-playbook \
+                            -i inventory/aws_ec2.yml \
+                            --private-key \$SSH_KEY \
+                            --limit ${params.VM_GROUP} \
+                            ${params.PLAYBOOK}
+                    """
+                }
+            }
+        }
+
+    }
+
+    post {
+        success { echo "Playbook completed on ${params.VM_GROUP}" }
+        failure { echo "Playbook failed on ${params.VM_GROUP} — check logs above" }
+    }
+}
