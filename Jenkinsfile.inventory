@@ -42,20 +42,7 @@ pipeline {
 
         stage('Inventory Detail') {
             steps {
-                sh '''
-                    ansible-inventory -i inventory/aws_ec2.yml --list \
-                    | python3 -c "
-import sys, json
-inv = json.load(sys.stdin)
-for group, data in inv.items():
-    if group.startswith(\"vm_\") and isinstance(data, dict):
-        hosts = data.get(\"hosts\", [])
-        if hosts:
-            print(f\"\\n[{group}] — {len(hosts)} instance(s)\")
-            for h in hosts:
-                print(f\"  {h}\")
-"
-                '''
+                sh 'ansible-inventory -i inventory/aws_ec2.yml --list | python3 tools/show_inventory.py'
             }
         }
 
