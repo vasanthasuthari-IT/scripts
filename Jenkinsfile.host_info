@@ -1,0 +1,80 @@
+// =============================================================================
+// Jenkinsfile.host_info
+// Triggered automatically on every push to this repo.
+// Runs host_info.py on all configured VMs and prints their hostname + IPs.
+// =============================================================================
+
+pipeline {
+    agent any
+
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 10, unit: 'MINUTES')
+    }
+
+    environment {
+        SSH_USER = 'ec2-user'
+        // Add or remove IPs here as VMs change
+        TARGET_IPS = '54.84.56.59,98.88.70.237'   // rundeck1, rundeck2
+    }
+
+    triggers {
+        githubPush()
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Host Info') {
+            steps {
+                withCredentials([
+                    sshUserPrivateKey(
+                        credentialsId: 'ec2-ssh-key',
+                        keyFileVariable: 'SSH_KEY'
+                    )
+                ]) {
+                    script {
+                        def ips = env.TARGET_IPS
+                            .split(',')
+                            .collect { it.trim() }
+                            .findAll { it }
+
+                        def parallelSteps = [:]
+
+                        ips.each { ip ->
+                            def host = ip
+                            parallelSteps["host_info @ ${host}"] = {
+                                sh """
+                                    chmod 400 \$SSH_KEY
+                                    ssh -i \$SSH_KEY \\
+                                        -o StrictHostKeyChecking=no \\
+                                        -o ConnectTimeout=15 \\
+                                        ${SSH_USER}@${host} \\
+                                        'python3 -' < host_info.py
+                                """
+                            }
+                        }
+
+                        parallel parallelSteps
+                    }
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "host_info.py ran successfully on all targets"
+        }
+        failure {
+            echo "host_info.py failed on one or more targets"
+        }
+    }
+}
