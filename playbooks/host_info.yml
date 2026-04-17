@@ -1,0 +1,27 @@
+---
+# =============================================================================
+# host_info.yml — print hostname and IPs for all or specific VM group
+#
+# Usage:
+#   ansible-playbook -i inventory/aws_ec2.yml playbooks/host_info.yml
+#   ansible-playbook -i inventory/aws_ec2.yml playbooks/host_info.yml --limit vm_rundeck
+# =============================================================================
+
+- name: Host info
+  hosts: all
+  become: false
+
+  tasks:
+
+    - name: Gather facts
+      ansible.builtin.setup:
+        gather_subset:
+          - network
+
+    - name: Print host info
+      ansible.builtin.debug:
+        msg:
+          - "Hostname   : {{ ansible_hostname }}"
+          - "Private IP : {{ ansible_default_ipv4.address }}"
+          - "Public IP  : {{ ansible_host }}"
+          - "VM Group   : {{ group_names | select('match', 'vm_.*') | list | first | default('unknown') }}"
