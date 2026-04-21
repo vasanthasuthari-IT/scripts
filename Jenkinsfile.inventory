@@ -42,8 +42,8 @@ pipeline {
                     python3 -m pip --version >/dev/null 2>&1 || \
                         curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --user --quiet
 
-                    python3 -m pip install ansible boto3 botocore --user --quiet
-                    python3 -m pip install "ansible[azure]" --user --quiet 2>/dev/null || true
+                    python3 -m pip install ansible boto3 botocore --user --break-system-packages --quiet
+                    python3 -m pip install "ansible[azure]" --user --break-system-packages --quiet 2>/dev/null || true
                     ansible-galaxy collection install -r requirements.yml -p ./collections
                 '''
             }
