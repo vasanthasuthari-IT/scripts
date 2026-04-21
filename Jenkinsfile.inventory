@@ -1,19 +1,29 @@
 // =============================================================================
 // Jenkinsfile.inventory
-// Lists all EC2 instances from dynamic inventory grouped by VM tag.
-// Run this anytime to verify Jenkins can see your instances.
+// Lists all instances from dynamic inventory grouped by VM tag.
+// Supports both AWS (EC2) and Azure (VMs).
 // =============================================================================
 
 pipeline {
     agent any
 
+    parameters {
+        choice(
+            name: 'CLOUD',
+            choices: ['aws', 'azure', 'both'],
+            description: 'Cloud provider to query'
+        )
+    }
+
     environment {
-        AWS_DEFAULT_REGION = 'us-east-1'
-        ANSIBLE_CONFIG     = 'ansible.cfg'
+        AWS_DEFAULT_REGION           = 'us-east-1'
+        ANSIBLE_CONFIG               = 'ansible.cfg'
+        ANSIBLE_SYSTEM_WARNINGS      = '0'
+        ANSIBLE_DEPRECATION_WARNINGS = '0'
+        PATH                         = "/var/jenkins_home/.local/bin:${env.PATH}"
     }
 
     triggers {
-        // Re-check inventory every 30 minutes
         cron('H/30 * * * *')
     }
 
@@ -28,23 +38,41 @@ pipeline {
         stage('Install Requirements') {
             steps {
                 sh '''
-                    pip3 install ansible boto3 botocore --break-system-packages --quiet
+                    # Bootstrap pip if not present (Jenkins container has python3 but not pip3)
+                    python3 -m pip --version >/dev/null 2>&1 || \
+                        curl -sS https://bootstrap.pypa.io/get-pip.py | python3 - --user --quiet
+
+                    python3 -m pip install ansible boto3 botocore --user --quiet
+                    python3 -m pip install "ansible[azure]" --user --quiet 2>/dev/null || true
                     ansible-galaxy collection install -r requirements.yml -p ./collections
                 '''
             }
         }
 
-        stage('Inventory Tree') {
+        stage('AWS Inventory') {
+            when {
+                expression { params.CLOUD in ['aws', 'both'] }
+            }
             steps {
                 sh 'ansible-inventory -i inventory/aws_ec2.yml --graph'
             }
         }
 
-        // stage('Inventory Detail') {
-        //     steps {
-        //         sh 'ansible-inventory -i inventory/aws_ec2.yml --list | python3 tools/show_inventory.py'
-        //     }
-        // }
+        stage('Azure Inventory') {
+            when {
+                expression { params.CLOUD in ['azure', 'both'] }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'azure-client-id',       variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'azure-secret',          variable: 'AZURE_SECRET'),
+                    string(credentialsId: 'azure-tenant',          variable: 'AZURE_TENANT'),
+                    string(credentialsId: 'azure-subscription-id', variable: 'AZURE_SUBSCRIPTION_ID')
+                ]) {
+                    sh 'ansible-inventory -i inventory/azure_rm.yml --graph'
+                }
+            }
+        }
 
     }
 
